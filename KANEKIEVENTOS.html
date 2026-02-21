@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>dash.js ClearKey</title>
+  <script src="https://cdn.dashjs.org/latest/dash.all.min.js"></script>
+</head>
+<body>
+
+<video id="video" controls autoplay width="800"></video>
+
+<script>
+  const url = "https://d3kzwqwnq1f7tq.cloudfront.net/out/v1/25ca218d53194065bedf6d998ace462e/index.mpd";
+
+  const video = document.getElementById('video');
+  const player = dashjs.MediaPlayer().create();
+  
+  // Config ClearKey
+  player.extend("ProtectionModel_21Jan2015", () => {
+    return dashjs.ProtectionModel_21Jan2015;
+  }, true);
+
+  player.setProtectionData({
+    "org.w3.clearkey": {
+      "clearkeys": {
+        "1c62a216a5fe423f959cb1ca02f62d83": "54f2fdc83c1da33cd9269bf21e08218c"
+      }
+    }
+  });
+
+  player.initialize(video, url, true);
+</script>
+
+</body>
+</html>
