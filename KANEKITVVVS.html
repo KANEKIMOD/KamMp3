@@ -1,120 +1,129 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <meta name="referrer" content="no-referrer" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.0/jquery.min.js"></script>
-    <script defer src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/shaka-player@4.14.10/dist/shaka-player.ui.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/shaka-player@4.14.10/dist/controls.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css?family=Material+Icons+Sharp" rel="stylesheet">
-    <link rel='stylesheet' type='text/css' href="https://fonts.googleapis.com/icon?family=Material+Icons" />
     
     <style>
         body {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            right: 0;
-            left: 0;
-            background-color: #000;
             margin: 0;
-            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #000;
+            font-family: monospace;
         }
-        
-        video {
+        #videoPlayer {
             width: 100vw;
             height: 100vh;
-            object-fit: contain;
             background: #000;
         }
-        
-        .shaka-overflow-menu-button {
-            color: white;
+        #debugPanel {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            color: #0f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 1000;
+            border: 1px solid #0f0;
+            max-height: 200px;
+            overflow-y: auto;
+            pointer-events: none;
+        }
+        .error {
+            color: #f00;
+        }
+        .success {
+            color: #0f0;
         }
     </style>
 </head>
 <body>
-    <video autoplay autostart="true" 
-           data-shaka-player 
-           id="videoPlayer" 
-           style="width: 100vw; height: 100vh;">
-    </video>
+    <video id="videoPlayer" autoplay controls style="width:100vw;height:100vh;"></video>
+    <div id="debugPanel">Iniciando...</div>
 
-    <script type="text/javascript">
-        // === CONFIGURACIÓN ===
-        const manifestUri = 'https://d3kzwqwnq1f7tq.cloudfront.net/out/v1/25ca218d53194065bedf6d998ace462e/index.mpd';
+    <script>
+        const debugPanel = document.getElementById('debugPanel');
         
-        // Tus claves en hexadecimal (convertidas del base64 que me diste)
-        const clearKeys = {
-            '1c62a216a5fe423f959cb1ca02f62d83': '54f2fdc83c1da33cd9269bf21e08218c'
-        };
-        // =====================
-
-        async function init() {
-            const video = document.getElementById('videoPlayer');
-            
-            // Instalar polyfills
-            shaka.polyfill.installAll();
-            
-            if (!shaka.Player.isBrowserSupported()) {
-                console.error('Navegador no soportado');
-                return;
-            }
-
-            // Crear player con UI
-            const ui = new shaka.ui.Overlay(video, video, video.parentElement);
-            const config = {
-                'seekBarColors': {
-                    base: 'rgba(255,255,255,.2)',
-                    buffered: 'rgba(255,255,255,.4)',
-                    played: 'rgb(0,150,255)',
-                },
-                controlPanelElements: ['play_pause', 'time_and_duration', 'spacer', 'mute', 'volume', 'fullscreen']
-            };
-            
-            ui.configure(config);
-            
-            const player = ui.getControls().getPlayer();
-            
-            // Configurar DRM con ClearKey
-            player.configure({
-                drm: {
-                    clearKeys: clearKeys
-                }
-            });
-
-            // Eventos para debug
-            player.addEventListener('error', (e) => {
-                console.error('Error:', e.detail);
-            });
-
-            // Cargar stream
-            try {
-                console.log('Cargando stream...');
-                await player.load(manifestUri);
-                console.log('Stream cargado correctamente');
-                
-                // Intentar reproducir
-                video.play();
-            } catch (error) {
-                console.error('Error al cargar:', error);
-            }
-
-            // Cambiar textos de botones (opcional)
-            setTimeout(() => {
-                $('.shaka-overflow-menu-button').html('⚙️');
-                $('.shaka-back-to-overflow-button .material-icons-round').html('←');
-            }, 1000);
+        function log(msg, type = 'info') {
+            const line = document.createElement('div');
+            line.className = type === 'error' ? 'error' : (type === 'success' ? 'success' : '');
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            debugPanel.appendChild(line);
+            debugPanel.scrollTop = debugPanel.scrollHeight;
+            console.log(msg);
         }
 
-        // Iniciar cuando la UI de Shaka esté lista
-        document.addEventListener('shaka-ui-loaded', init);
-        document.addEventListener('shaka-ui-load-failed', () => {
-            console.error('No se pudo cargar la UI de Shaka');
-        });
+        async function initPlayer() {
+            try {
+                // 1. Verificar Shaka
+                if (typeof shaka === 'undefined') {
+                    log('❌ Shaka Player no cargó', 'error');
+                    return;
+                }
+                log('✅ Shaka Player cargado', 'success');
+
+                // 2. Instalar polyfills
+                shaka.polyfill.installAll();
+                log('✅ Polyfills instalados', 'success');
+
+                // 3. Verificar soporte del navegador
+                if (!shaka.Player.isBrowserSupported()) {
+                    log('❌ Navegador no soporta DRM', 'error');
+                    return;
+                }
+                log('✅ Navegador compatible', 'success');
+
+                // 4. Configuración
+                const video = document.getElementById('videoPlayer');
+                const player = new shaka.Player(video);
+                
+                // 5. Configurar ClearKey
+                const clearKeys = {
+                    // key ID en hex : key en hex
+                    '1c62a216a5fe423f959cb1ca02f62d83': '54f2fdc83c1da33cd9269bf21e08218c'
+                };
+                
+                player.configure({
+                    drm: { clearKeys: clearKeys }
+                });
+                log('✅ DRM configurado con ClearKey', 'success');
+                log(`🔑 Key ID: 1c62a216...`, 'info');
+                
+                // 6. Eventos de error
+                player.addEventListener('error', (e) => {
+                    const error = e.detail;
+                    log(`❌ Error ${error.code}: ${error.message}`, 'error');
+                    if (error.data) {
+                        log(`   Detalles: ${JSON.stringify(error.data)}`, 'error');
+                    }
+                });
+
+                // 7. Cargar stream
+                const manifestUri = 'https://d3kzwqwnq1f7tq.cloudfront.net/out/v1/25ca218d53194065bedf6d998ace462e/index.mpd';
+                log(`📡 Cargando: ${manifestUri}`, 'info');
+                
+                await player.load(manifestUri);
+                log('✅ Stream cargado exitosamente!', 'success');
+                
+                // 8. Intentar reproducir
+                await video.play();
+                log('▶️ Reproduciendo', 'success');
+
+            } catch (error) {
+                log(`❌ Error crítico: ${error.message}`, 'error');
+                if (error.code) {
+                    log(`   Código: ${error.code}`, 'error');
+                }
+            }
+        }
+
+        // Iniciar
+        window.onload = initPlayer;
     </script>
 </body>
 </html>
