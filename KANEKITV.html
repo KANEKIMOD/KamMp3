@@ -49,6 +49,7 @@
             background: #222;
             border-radius: 5px;
             font-size: 14px;
+            margin-top: 10px;
         }
     </style>
     
@@ -75,8 +76,12 @@
         // URL del stream
         const streamURL = 'https://d3kzwqwnq1f7tq.cloudfront.net/out/v1/25ca218d53194065bedf6d998ace462e/index.mpd';
         
-        // URL de la licencia (tu clave de borrado)
-        const licenseURL = 'https://dl.dropboxusercontent.com/scl/fi/bify73qa6pam1h5op5mg4/tigo3.json?rlkey=r2r6qmvzobpn1tib3n068ap1z&st=2jfgsr87&dl=0';
+        // Configuración de la clave (directamente del JSON)
+        const CLEAR_KEY = {
+            kty: "oct",
+            k: "VPL9yDwdozzZJpvyHgghjA",  // La clave en base64
+            kid: "HGKiFqX+Qj+VnLHKAvYtgw"   // Key ID en base64
+        };
         
         let player = null;
 
@@ -89,15 +94,17 @@
                     player = new shaka.Player(video);
                 }
                 
-                // Configurar DRM
+                // Configurar DRM con Clear Key
                 const config = {
                     drm: {
-                        servers: {
-                            'com.widevine.alpha': licenseURL
+                        clearKeys: {
+                            // keyID: clave
+                            "1c62a216a5fe423f959cb1ca02f62d83": "54f2fdc83c1da33cd9269bf21e08218c"
                         }
                     }
                 };
                 
+                // Aplicar configuración
                 await player.configure(config);
                 
                 estado.textContent = 'Cargando stream...';
@@ -112,7 +119,7 @@
                 
             } catch (error) {
                 estado.textContent = 'Error: ' + error.message;
-                console.error(error);
+                console.error('Error completo:', error);
             }
         }
         
