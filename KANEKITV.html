@@ -1,70 +1,348 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Reproductor Tigo Style</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <!-- Shaka Player y Controles -->
-  <script src="https://cdn.jsdelivr.net/npm/shaka-player@4.14.10/dist/shaka-player.ui.min.js" defer></script>
-  <link href="https://cdn.jsdelivr.net/npm/shaka-player@4.14.10/dist/controls.min.css" rel="stylesheet">
-
-  <!-- Iconos de Material para botones -->
-  <link href="https://fonts.googleapis.com/css?family=Material+Icons+Sharp" rel="stylesheet">
-
-  <style>
-    html, body {
-      margin: 0;
-      background-color: #000;
-      height: 100%;
-    }
-    #video-container {
-      width: 100vw;
-      height: 100vh;
-      background-color: #000;
-      position: relative;
-    }
-    video {
-      width: 100%;
-      height: 100%;
-    }
-    .shaka-controls-container {
-      font-family: 'Roboto', sans-serif;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tigo Sports - Reproductor</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            max-width: 1200px;
+            width: 90%;
+            margin: 20px auto;
+        }
+        
+        .player-container {
+            background: #1a1a1a;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        .video-wrapper {
+            position: relative;
+            width: 100%;
+            padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+        }
+        
+        .controls {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .status {
+            padding: 10px 20px;
+            background: #333;
+            color: #fff;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 14px;
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        h1 {
+            color: white;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        
+        .logo img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .error-message {
+            color: #ff6b6b;
+            padding: 10px;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.1);
+            margin-top: 10px;
+            display: none;
+        }
+        
+        .debug-info {
+            margin-top: 20px;
+            padding: 10px;
+            background: rgba(0,0,0,0.3);
+            color: #fff;
+            font-size: 12px;
+            border-radius: 5px;
+            font-family: monospace;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+    </style>
 </head>
 <body>
-  <div id="video-container" class="shaka-player-container">
-    <video autoplay muted data-shaka-player id="video" poster="https://via.placeholder.com/1280x720.png?text=Cargando..."></video>
-  </div>
+    <div class="container">
+        <div class="logo">
+            <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTCV8ylO8tcnV_u96yTcp4SS100-FKMfi42Dw&s" alt="Tigo Sports Logo">
+        </div>
+        <h1>Tigo Sports - Reproductor en Vivo</h1>
+        
+        <div class="player-container">
+            <div class="video-wrapper">
+                <video id="videoPlayer" controls>
+                    Tu navegador no soporta el elemento de video.
+                </video>
+            </div>
+            
+            <div class="controls">
+                <button onclick="loadStream()">Cargar Stream</button>
+                <button onclick="reloadStream()">Recargar</button>
+                <button onclick="toggleFullscreen()">Pantalla Completa</button>
+                <div class="status" id="status">⏹️ Detenido</div>
+            </div>
+            
+            <div id="errorMessage" class="error-message"></div>
+            <div id="debugInfo" class="debug-info"></div>
+        </div>
+    </div>
 
-  <script>
-    document.addEventListener('shaka-ui-loaded', async () => {
-      const video = document.getElementById('video');
-      const ui = video['ui'];
-      const controls = ui.getControls();
-      const player = controls.getPlayer();
-
-      player.configure({
-        drm: {
-          clearKeys: {
-            // Aquí ponés tus claves ClearKey si tu .mpd las necesita
-            "1c62a216a5fe423f959cb1ca02f62d83": "54f2fdc83c1da33cd9269bf21e08218c"
-          }
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dashjs@latest/dist/dash.all.min.js"></script>
+    
+    <script>
+        const videoElement = document.getElementById('videoPlayer');
+        const statusElement = document.getElementById('status');
+        const errorElement = document.getElementById('errorMessage');
+        const debugElement = document.getElementById('debugInfo');
+        
+        let player = null;
+        let currentStreamType = null;
+        
+        const streamUrl = 'https://d3kzwqwnq1f7tq.cloudfront.net/out/v1/25ca218d53194065bedf6d998ace462e/index.mpd';
+        
+        function logDebug(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            debugElement.innerHTML = `[${timestamp}] ${message}<br>` + debugElement.innerHTML;
+            if (debugElement.children.length > 5) {
+                debugElement.removeChild(debugElement.lastChild);
+            }
         }
-      });
-
-      try {
-        await player.load('https://d3kzwqwnq1f7tq.cloudfront.net/out/v1/25ca218d53194065bedf6d998ace462e/index.mpd');
-        console.log('🎉 Reproducción iniciada');
-      } catch (error) {
-        console.error('Error al cargar el video:', error);
-      }
-    });
-
-    document.addEventListener('shaka-ui-load-failed', () => {
-      console.error('❌ No se pudo cargar la interfaz de Shaka');
-    });
-  </script>
+        
+        function showError(message) {
+            errorElement.style.display = 'block';
+            errorElement.textContent = '❌ Error: ' + message;
+            logDebug('ERROR: ' + message);
+        }
+        
+        function hideError() {
+            errorElement.style.display = 'none';
+        }
+        
+        async function loadStream() {
+            try {
+                hideError();
+                statusElement.innerHTML = '⏳ Cargando...';
+                logDebug('Iniciando carga del stream...');
+                
+                // Detener reproducción anterior si existe
+                if (player) {
+                    if (currentStreamType === 'dash') {
+                        player.reset();
+                    } else if (currentStreamType === 'hls') {
+                        player.destroy();
+                    }
+                }
+                
+                // Intentar reproducir como DASH primero
+                if (dashjs && window.dashjs) {
+                    try {
+                        logDebug('Intentando reproducir como DASH...');
+                        player = dashjs.MediaPlayer().create();
+                        player.initialize(videoElement, streamUrl, true);
+                        currentStreamType = 'dash';
+                        
+                        player.on('error', (error) => {
+                            console.error('DASH Error:', error);
+                            showError('Error en reproducción DASH');
+                        });
+                        
+                        statusElement.innerHTML = '▶️ Reproduciendo (DASH)';
+                        logDebug('Stream DASH cargado correctamente');
+                        return;
+                    } catch (dashError) {
+                        console.warn('DASH no soportado:', dashError);
+                        logDebug('DASH falló, intentando HLS...');
+                    }
+                }
+                
+                // Si DASH falla, intentar como HLS
+                if (Hls.isSupported()) {
+                    try {
+                        logDebug('Intentando reproducir como HLS...');
+                        const hlsUrl = streamUrl.replace('.mpd', '.m3u8');
+                        
+                        player = new Hls();
+                        player.loadSource(hlsUrl);
+                        player.attachMedia(videoElement);
+                        currentStreamType = 'hls';
+                        
+                        player.on(Hls.Events.MANIFEST_PARSED, function() {
+                            videoElement.play().catch(e => {
+                                console.log('Auto-play bloqueado:', e);
+                                statusElement.innerHTML = '⏸️ Pausado (clic para reproducir)';
+                            });
+                            statusElement.innerHTML = '▶️ Reproduciendo (HLS)';
+                            logDebug('Stream HLS cargado correctamente');
+                        });
+                        
+                        player.on(Hls.Events.ERROR, function(event, data) {
+                            if (data.fatal) {
+                                showError('Error fatal en HLS');
+                                console.error('HLS Error:', data);
+                            }
+                        });
+                        
+                        return;
+                    } catch (hlsError) {
+                        console.warn('HLS falló:', hlsError);
+                        logDebug('HLS falló, intentando reproducción directa...');
+                    }
+                }
+                
+                // Último intento: reproducción directa
+                logDebug('Intentando reproducción directa...');
+                videoElement.src = streamUrl;
+                videoElement.load();
+                
+                videoElement.onloadedmetadata = function() {
+                    statusElement.innerHTML = '▶️ Listo para reproducir';
+                    logDebug('Metadatos cargados para reproducción directa');
+                };
+                
+            } catch (error) {
+                console.error('Error general:', error);
+                showError('No se pudo cargar el stream: ' + error.message);
+                statusElement.innerHTML = '❌ Error';
+            }
+        }
+        
+        function reloadStream() {
+            logDebug('Recargando stream...');
+            if (player) {
+                if (currentStreamType === 'dash') {
+                    player.reset();
+                } else if (currentStreamType === 'hls') {
+                    player.destroy();
+                }
+            }
+            videoElement.src = '';
+            loadStream();
+        }
+        
+        function toggleFullscreen() {
+            if (videoElement.requestFullscreen) {
+                videoElement.requestFullscreen();
+            } else if (videoElement.webkitRequestFullscreen) {
+                videoElement.webkitRequestFullscreen();
+            } else if (videoElement.msRequestFullscreen) {
+                videoElement.msRequestFullscreen();
+            }
+            logDebug('Alternando pantalla completa');
+        }
+        
+        // Event listeners
+        videoElement.addEventListener('play', () => {
+            statusElement.innerHTML = '▶️ Reproduciendo';
+            logDebug('Reproducción iniciada');
+        });
+        
+        videoElement.addEventListener('pause', () => {
+            statusElement.innerHTML = '⏸️ Pausado';
+            logDebug('Reproducción pausada');
+        });
+        
+        videoElement.addEventListener('ended', () => {
+            statusElement.innerHTML = '⏹️ Finalizado';
+            logDebug('Reproducción finalizada');
+        });
+        
+        videoElement.addEventListener('error', (e) => {
+            const error = videoElement.error;
+            if (error) {
+                showError(`Error de video: ${error.message} (Código: ${error.code})`);
+                statusElement.innerHTML = '❌ Error de video';
+            }
+        });
+        
+        // Cargar automáticamente al iniciar
+        window.addEventListener('load', () => {
+            logDebug('Página cargada, iniciando stream...');
+            loadStream();
+        });
+        
+        // Manejar errores de red
+        window.addEventListener('online', () => {
+            logDebug('Conexión restaurada');
+            reloadStream();
+        });
+        
+        window.addEventListener('offline', () => {
+            showError('Sin conexión a internet');
+            statusElement.innerHTML = '📡 Sin conexión';
+        });
+        
+    </script>
 </body>
 </html>
