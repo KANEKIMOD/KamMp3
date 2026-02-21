@@ -1,126 +1,56 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tigo Sports - JW Player</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 20px;
-            background: #1a1a1a;
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-        .container {
-            width: 100%;
-            max-width: 1000px;
-            background: #000;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-        #player {
-            width: 100%;
-            aspect-ratio: 16/9;
-        }
-        .info {
-            padding: 15px;
-            background: #222;
-            color: #fff;
-            font-size: 14px;
-            border-top: 1px solid #333;
-        }
-        .status {
-            color: #00ff00;
-            font-weight: bold;
-        }
-    </style>
-    
-    <!-- JW Player API -->
-    <script src="https://cdn.jwplayer.com/libraries/ID_DE_TU_LIBRERIA.js"></script>
+    <title>Tigo Sports</title>
+    <script src="https://cdn.jsdelivr.net/npm/shaka-player@4.7.0/dist/shaka-player.compiled.js"></script>
 </head>
 <body>
-    <div class="container">
-        <div id="player"></div>
-        <div class="info" id="estado">
-            <span class="status">⚡</span> Inicializando...
-        </div>
-    </div>
+    <video id="video" width="100%" height="auto" controls autoplay></video>
+    <pre id="log" style="color: white; background: black; padding: 10px;"></pre>
 
     <script>
-        // Tu configuración del stream
-        const streamConfig = {
-            file: 'https://d3kzwqwnq1f7tq.cloudfront.net/out/v1/25ca218d53194065bedf6d998ace462e/index.mpd',
-            image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTCV8ylO8tcnV_u96yTcp4SS100-FKMfi42Dw&s',
-            title: 'Tigo Sports',
-            description: 'Señal en vivo',
-            type: 'dash',
-            drm: {
-                clearkey: {
-                    keyId: '1c62a216a5fe423f959cb1ca02f62d83',
-                    key: '54f2fdc83c1da33cd9269bf21e08218c'
-                }
+        const video = document.getElementById('video');
+        const logDiv = document.getElementById('log');
+
+        function log(msg) {
+            logDiv.innerText += new Date().toLocaleTimeString() + ': ' + msg + '\n';
+            console.log(msg);
+        }
+
+        async function iniciar() {
+            // Instalar polyfills
+            shaka.polyfill.installAll();
+
+            if (!shaka.Player.isBrowserSupported()) {
+                log('❌ Navegador no soportado');
+                return;
             }
-        };
 
-        // Inicializar JW Player
-        function initPlayer() {
-            const estado = document.getElementById('estado');
-            
+            const player = new shaka.Player(video);
+
+            player.addEventListener('error', (e) => {
+                log('❌ Error: ' + e.detail.message);
+            });
+
+            // Configuración DRM con tus claves (ya convertidas a hex)
+            player.configure({
+                drm: {
+                    clearKeys: {
+                        '1c62a216a5fe423f959cb1ca02f62d83': '54f2fdc83c1da33cd9269bf21e08218c'
+                    }
+                }
+            });
+
             try {
-                jwplayer('player').setup({
-                    playlist: [{
-                        sources: [{
-                            file: streamConfig.file,
-                            type: 'dash',
-                            drm: streamConfig.drm
-                        }],
-                        image: streamConfig.image,
-                        title: streamConfig.title,
-                        description: streamConfig.description
-                    }],
-                    width: '100%',
-                    height: '100%',
-                    aspectratio: '16:9',
-                    autostart: true,
-                    mute: false,
-                    primary: 'html5'
-                });
-
-                // Eventos del player
-                jwplayer('player').on('ready', function() {
-                    estado.innerHTML = '<span class="status">✅</span> Player listo - Conectando...';
-                });
-
-                jwplayer('player').on('play', function() {
-                    estado.innerHTML = '<span class="status">▶️</span> Reproduciendo';
-                });
-
-                jwplayer('player').on('pause', function() {
-                    estado.innerHTML = '<span class="status">⏸️</span> Pausado';
-                });
-
-                jwplayer('player').on('error', function(e) {
-                    estado.innerHTML = '<span class="status">❌</span> Error: ' + e.message;
-                    console.error('Error JW:', e);
-                });
-
-                jwplayer('player').on('setupError', function(e) {
-                    estado.innerHTML = '<span class="status">❌</span> Error de configuración';
-                });
-
-            } catch (error) {
-                estado.innerHTML = '<span class="status">❌</span> ' + error.message;
-                console.error('Error:', error);
+                log('📡 Cargando stream...');
+                await player.load('https://d3kzwqwnq1f7tq.cloudfront.net/out/v1/25ca218d53194065bedf6d998ace462e/index.mpd');
+                log('✅ Stream cargado, reproduciendo...');
+            } catch (err) {
+                log('❌ Error al cargar: ' + err.message);
             }
         }
 
-        // Cargar cuando la página esté lista
-        window.onload = initPlayer;
+        iniciar();
     </script>
 </body>
 </html>
